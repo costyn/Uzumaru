@@ -44,8 +44,11 @@
     overflow: hidden;
   }
   .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-  #glow { filter: blur(var(--diffuse, 6px)); opacity: 0.95; }
-  #dots { mix-blend-mode: screen; opacity: var(--dots, 0.55); }
+  /* Bare LEDs: round dots, softened a little. Diffuser: one lit window per LED under the black overlay. */
+  #glow { filter: blur(6px); opacity: 0.95; }
+  #dots { mix-blend-mode: screen; opacity: 0.55; }
+  .stage[data-mode="diffuser"] #glow, .stage[data-mode="diffuser"] #dots { display: none; }
+  .stage[data-mode="bare"] #cells, .stage[data-mode="bare"] #cover { display: none; }
 
   .now { display: grid; gap: 4px; text-align: center; }
   .now h2 { font: 700 24px/1.2 var(--font-display); margin: 0; }
@@ -81,7 +84,11 @@
   code { font-family: var(--font-data); font-size: 12px; }
   footer a { color: var(--accent); }
   #error { color: var(--accent); text-align: center; }
-  @media (prefers-reduced-motion: reduce) { #glow { transition: none; } }
+  .seg { display: inline-flex; }
+  .seg .chip { border-radius: 0; padding: 8px 14px; }
+  .seg .chip:first-child { border-radius: 999px 0 0 999px; }
+  .seg .chip:last-child { border-radius: 0 999px 999px 0; margin-left: -1px; }
+  .seg .chip[aria-pressed="true"] { position: relative; }
 </style>
 
 <main>
@@ -90,7 +97,9 @@
     <p class="lede">Every pattern on the lamp, rendered by its actual firmware code onto the board's 256 LEDs at their true positions on the Fibonacci spiral.</p>
   </header>
 
-  <div class="stage" aria-label="Simulated lamp">
+  <div class="stage" data-mode="diffuser" aria-label="Simulated lamp">
+    <canvas id="cells" width="460" height="460"></canvas>
+    <canvas id="cover" width="460" height="460"></canvas>
     <canvas id="glow" width="460" height="460"></canvas>
     <canvas id="dots" width="460" height="460"></canvas>
   </div>
@@ -104,8 +113,11 @@
 
   <div class="controls">
     <button id="play" type="button">Pause</button>
-    <label for="diffuse">Paper diffuser <input id="diffuse" type="range" min="0" max="14" value="6"></label>
-    <label for="bright">Brightness <input id="bright" type="range" min="4" max="255" value="50"></label>
+    <div class="seg" id="mode" role="group" aria-label="Rendering">
+      <button class="chip" type="button" data-mode="diffuser" aria-pressed="true">Diffuser</button>
+      <button class="chip" type="button" data-mode="bare" aria-pressed="false">Bare LEDs</button>
+    </div>
+    <label for="bright">Brightness <input id="bright" type="range" min="4" max="255" value="255"></label>
   </div>
 
   <section class="new">
@@ -126,13 +138,14 @@
   </section>
 
   <footer>
-    <p>Each clip loops 16 to 30 seconds at the default speed and brightness (50, adjustable) with the Sunset palette, simulated at about 83 frames per second and shown at /*FPS*/28. Colours are converted from LED light to screen brightness, so dim LEDs look roughly as they do on the lamp.</p>
+    <p>Each clip loops 16 to 30 seconds at the default speed with the Sunset palette, simulated at about 83 frames per second and shown at /*FPS*/28. Colours are converted from LED light to screen brightness, so dim LEDs look roughly as they do on the lamp; a screen cannot match the real LEDs' brightness, so the slider only dims. <em>Diffuser</em> draws the lamp as built (LEDs, a 0.4 mm PLA diffuser and a black overlay with one window per LED, shape from the CAD file); <em>Bare LEDs</em> shows the LEDs themselves.</p>
     <p><a href="https://costyn.github.io/uzumaru/">Photos of the lamp</a> · <a href="https://github.com/costyn/Uzumaru">Source code</a> · regenerate with <code>tools/preview/publish.sh</code>.</p>
   </footer>
 </main>
 
 <script>
 const GEOMETRY = /*GEOMETRY*/null;
+const OVERLAY = /*OVERLAY*/null; // cell outlines in LED coordinates (tools/preview/gen_overlay.py), null = bare LEDs only
 const CLIPS = /*CLIPS*/[];
 const FPS = /*FPS*/28;
 const DESCRIPTIONS = {
@@ -161,12 +174,19 @@ const N = 256;
 
 const glow = document.getElementById("glow").getContext("2d");
 const dots = document.getElementById("dots").getContext("2d");
+const cells = document.getElementById("cells").getContext("2d");
+const cover = document.getElementById("cover").getContext("2d");
+const stage = document.querySelector(".stage");
+let mode = OVERLAY ? "diffuser" : "bare";
+// Sharper on high-density screens: every canvas is drawn at up to 2x the CSS size.
+const SIZE = Math.round(460 * Math.min(window.devicePixelRatio || 1, 2));
+for (const c of stage.querySelectorAll("canvas")) c.width = c.height = SIZE;
 // LED value -> screen value: scale like FastLED.setBrightness(), then LED light -> sRGB
 let lut = [];
 const setBrightness = b => {
   lut = Array.from({ length: 256 }, (_, v) => Math.round(255 * Math.pow((v * b) / 65025, 1 / 2.2)));
 };
-setBrightness(50); // the lamp starts at 50
+setBrightness(255);
 const decoded = new Map();
 let current = null, frame = 0, playing = true, last = 0;
 
@@ -181,8 +201,61 @@ async function decode(clip) {
   return raw;
 }
 
+// Diffuser mode. Per frame only the windows are filled with their LED's colour (flat); the soft falloff towards
+// the walls, the black walls and the centre dot are a static layer on top, drawn once.
+const cellPaths = OVERLAY ? OVERLAY.cells.map(d => new Path2D(d)) : [];
+const BASE = [12, 12, 15]; // an unlit window is barely lighter than the overlay
+function drawDiffuser(raw, f) {
+  const size = SIZE, pad = size * 0.075, k = (size - 2 * pad) / 255 / OVERLAY.q;
+  const off = f * N * 3;
+  cells.setTransform(1, 0, 0, 1, 0, 0);
+  cells.fillStyle = `rgb(${BASE})`;
+  cells.fillRect(0, 0, size, size);
+  cells.setTransform(k, 0, 0, k, pad, pad);
+  for (let i = 0; i < N; i++) {
+    const r = lut[raw[off + i * 3]], g = lut[raw[off + i * 3 + 1]], b = lut[raw[off + i * 3 + 2]];
+    if (r + g + b === 0) continue;
+    cells.fillStyle = `rgb(${Math.min(255, r + BASE[0])},${Math.min(255, g + BASE[1])},${Math.min(255, b + BASE[2])})`;
+    cells.fill(cellPaths[i]);
+  }
+}
+
+function drawCover() {
+  const size = SIZE, pad = size * 0.075, k = (size - 2 * pad) / 255 / OVERLAY.q, q = OVERLAY.q;
+  cover.setTransform(1, 0, 0, 1, 0, 0);
+  cover.clearRect(0, 0, size, size);
+  cover.setTransform(k, 0, 0, k, pad, pad);
+  // inside each window: a little brighter over the LED, softer towards the walls
+  for (let i = 0; i < N; i++) {
+    const x = GEOMETRY.x[i] * q, y = GEOMETRY.y[i] * q;
+    cover.save();
+    cover.clip(cellPaths[i]);
+    const grad = cover.createRadialGradient(x, y, 0, x, y, 9.5 * q);
+    grad.addColorStop(0, "rgba(0,0,0,0)");
+    grad.addColorStop(0.5, "rgba(0,0,0,0.04)");
+    grad.addColorStop(1, "rgba(0,0,0,0.26)");
+    cover.fillStyle = grad;
+    cover.fill(cellPaths[i]);
+    cover.lineJoin = "round";
+    for (const [w, a] of [[0.3, 0.08], [0.16, 0.1], [0.08, 0.12]]) {
+      cover.strokeStyle = `rgba(0,0,0,${a})`;
+      cover.lineWidth = w * q * 2;
+      cover.stroke(cellPaths[i]);
+    }
+    cover.restore();
+  }
+  // the opaque overlay: the disc minus the windows
+  cover.fillStyle = "#0a0a0c";
+  cover.fill(new Path2D(OVERLAY.outline + OVERLAY.cells.join("")), "evenodd");
+  cover.fill(new Path2D(OVERLAY.dot));
+  cover.strokeStyle = "rgba(255,255,255,0.07)";
+  cover.lineWidth = 0.5 * q;
+  cover.stroke(new Path2D(OVERLAY.outline));
+}
+
 function draw(raw, f) {
-  const size = glow.canvas.width, pad = size * 0.075, s = (size - 2 * pad) / 255;
+  if (mode === "diffuser") return drawDiffuser(raw, f);
+  const size = SIZE, pad = size * 0.075, s = (size - 2 * pad) / 255;
   const off = f * N * 3;
   glow.clearRect(0, 0, size, size);
   dots.clearRect(0, 0, size, size);
@@ -249,17 +322,20 @@ document.getElementById("play").addEventListener("click", e => {
   playing = !playing;
   e.target.textContent = playing ? "Pause" : "Play";
 });
-const diffuse = document.getElementById("diffuse");
-const applyDiffuse = () => {
-  document.documentElement.style.setProperty("--diffuse", diffuse.value + "px");
-  document.documentElement.style.setProperty("--dots", (0.75 - diffuse.value / 28).toFixed(2));
+const modeButtons = document.querySelectorAll("#mode .chip");
+const setMode = m => {
+  mode = m;
+  stage.dataset.mode = m;
+  modeButtons.forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === m));
+  if (current) draw(current, frame);
 };
-diffuse.addEventListener("input", applyDiffuse);
+modeButtons.forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
+if (OVERLAY) drawCover(); else document.getElementById("mode").hidden = true;
+stage.dataset.mode = mode;
 document.getElementById("bright").addEventListener("input", e => {
   setBrightness(+e.target.value);
   if (current) draw(current, frame);
 });
-applyDiffuse();
 
 if (matchMedia("(prefers-reduced-motion: reduce)").matches) playing = false, document.getElementById("play").textContent = "Play";
 select(NEW.find(n => CLIPS.some(c => c.name === n)) || (CLIPS[0] && CLIPS[0].name));

@@ -94,7 +94,11 @@ def html(out, names):
             clips.append({"name": name, "data": base64.b64encode(packed).decode()})
         print(f"{name}: {len(raw) // (N * 3)} frames", file=sys.stderr)
     template = (Path(__file__).parent / "player.html").read_text()
+    # the black overlay with its windows, registered to the LEDs (gen_overlay.py); without it only bare LEDs are shown
+    overlay_file = Path(__file__).with_name("overlay.json")
+    overlay = overlay_file.read_text().strip() if overlay_file.exists() else "null"
     page = template.replace("/*GEOMETRY*/null", json.dumps({"x": xs, "y": ys})) \
+                   .replace("/*OVERLAY*/null", overlay) \
                    .replace("/*CLIPS*/[]", json.dumps(clips)) \
                    .replace("/*FPS*/28", str(round(1000 / (FRAME_MS * STRIDE))))
     if os.environ.get("PREVIEW_FRAGMENT") != "1":
