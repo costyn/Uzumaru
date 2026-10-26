@@ -259,6 +259,9 @@ void Pacifica(CRGB *ledBuffer)
         seeds[k].blue = scale8(seeds[k].blue, 145);
         seeds[k].green = scale8(seeds[k].green, 200);
         seeds[k] |= CRGB(2, 5, 7);
+        // ~1.8x gain: the original is dim by design, too dark at the lamp's default brightness
+        CRGB extra = seeds[k];
+        seeds[k] += extra.nscale8(205);
     }
 
     for (uint16_t i = 0; i < NUM_LEDS; i++)

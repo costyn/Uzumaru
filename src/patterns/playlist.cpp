@@ -11,7 +11,7 @@ const Pattern gPatterns[] = {
     PATTERN(SeedRunners),
     PATTERN(Ripples),
     PATTERN(Vortex),
-    PATTERN(Heartbeat),
+    // PATTERN(Heartbeat), // too intense on a loop; kept for one-shot music reactions
     PATTERN(ColorWheel), // replaces testCylinderMapping2
     // Adapted from Jason Coon's Fibonacci256 firmware (fibonacci256.cpp)
     PATTERN(Emitter),

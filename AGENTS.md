@@ -77,6 +77,28 @@ tools/wokwi/smoke.sh                                             # Wokwi boot te
   why. Keep FastLED integer math (`sin8`, `scale8`, `qadd8`) in per-LED loops; avoid `double` there (software-emulated
   on the ESP32).
 
+## Pattern design guidelines (the owner's taste, from watching them on the lamp)
+
+The panel has only 256 LEDs behind a diffuser, and the owner judges patterns at the power-on defaults (brightness 50,
+speed 0.08). What worked and what didn't, October 2026:
+
+- **Less is more.** A few strong elements beat many small ones: 3-4 thin spiral arms rather than 10 overlapping bands
+  (Parastichy), runners on half the arms (SeedRunners). Fine detail is lost at this resolution: a pattern that breaks
+  into many independent moving bits looks like noise (WLED's DriftRose did; ours stays one coherent figure).
+- **Vary brightness, don't shove colours around.** The favourites keep colours roughly in place, or drifting slowly,
+  and move *light* through them: pulses, glints, waves of brightness over a calm palette (Uzumaki, Bloom's glint,
+  Octopus, pridePalette). Fast-moving colour fields read as busy. (The owner's words were hard to pin down here; ask
+  them if a change depends on the distinction.)
+- **Bright enough at brightness 50.** Check with `tools/preview/brightness.py` (average LED output, 0-255): full-field
+  patterns should land around 30-45; Pacifica (18) and PolarLights (20) were too dark. Sparse patterns can sit lower if
+  their features are bright. In the preview, the brightness slider starts at the lamp's 50.
+- **Smooth at the default speed.** Slow gradients on few LEDs step visibly, and FastLED's dithering flickers at low
+  brightness. Use 16-bit palette positions (`paletteColor16()`) for slow-moving gradients, and pick rates that look
+  smooth at speed 0.08 (ColorWheel needed 1.6x its first rates).
+- **Loops stay calm.** Strobing, high-contrast pulses (Heartbeat) are too intense for the playlist; keep them for
+  one-shot music reactions.
+- Shown as liked without changes: Uzumaki, Ripples, Vortex, Emitter, SwirlFibonacci, PolarNoise, Octopus, pridePalette.
+
 ## Dependencies
 
 The owner prefers current versions. `platformio.ini` tracks the latest releases; pin a dependency only when a release

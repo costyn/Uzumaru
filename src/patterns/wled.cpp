@@ -72,7 +72,9 @@ void PolarLights(CRGB *ledBuffer)
     // WLED on a 16x16 matrix with its sliders at 128: x*152, y*16 (+ a small
     // per-pixel jitter that works out to about y*17), time at 3.5 per frame (about 140 a second, slowed to 100)
     const uint16_t z = clockUnits(0.1f);
-    const uint8_t adjustHeight = 23;     // brightness lost per pixel away from the middle row
+    // brightness lost per pixel away from the middle row: WLED's 23 left most of a
+    // round disc dark at the lamp's default brightness
+    const uint8_t adjustHeight = 16;
 
     for (uint16_t i = 0; i < NUM_LEDS; i++)
     {
@@ -81,7 +83,7 @@ void PolarLights(CRGB *ledBuffer)
         uint8_t n = noise8(x, y, z);
         uint16_t away = (abs((int16_t)ledY[i] - 128) * adjustHeight) >> 4; // 16 ledY units per pixel
         n = qsub8(n, away > 255 ? 255 : away);
-        ledBuffer[i] = ColorFromPalette(gCurrentPalette, n, n);
+        ledBuffer[i] = ColorFromPalette(gCurrentPalette, n, qadd8(n, n >> 2)); // a little brighter than WLED's
     }
 }
 
@@ -125,9 +127,15 @@ void SunRadiation(CRGB *ledBuffer)
 
 void DriftRose(CRGB *ledBuffer)
 {
-    const uint8_t points = 36;
-    const float fadeHalfLifeMs = 80;      // WLED fades 32 + speed/8 = 48 of 256 per frame
-    const uint16_t reach2 = 15 * 15;      // a point lights the LEDs within this distance
+    // Changed for the lamp: WLED's 36 points each swing at their own rate
+    // (1..36 per minute), so after the opening swirl they scatter into many
+    // separate bits for most of each minute, too much detail for 256 LEDs.
+    // Here 24 points swing at one rate with a per-point phase offset that slowly
+    // winds and unwinds: a star burst when it is zero, a rose or spiral when
+    // wound, and never a scatter.
+    const uint8_t points = 24;
+    const float fadeHalfLifeMs = 80;
+    const uint32_t reach2 = 15 * 15;      // a point lights the LEDs within this distance
     static double lastClock = 0;
     static float fadeCarry = 0;
 
@@ -141,20 +149,23 @@ void DriftRose(CRGB *ledBuffer)
     float dt = forwardMs(lastClock);
     fadeByTime(ledBuffer, dt, fadeHalfLifeMs, fadeCarry);
 
-    for (uint8_t p = 1; p <= points; p++)
+    uint16_t base = phase16(0.25f);
+    // phase offset between neighbouring points: up to 1.5 turns over all points, both ways
+    int32_t windStep = ((int32_t)sin16(phase16(0.012f)) * (65536 * 3 / 2 / points)) >> 15;
+
+    for (uint8_t p = 0; p < points; p++)
     {
-        // WLED: beatsin8(p, ...) is p beats a minute
-        int16_t swing = ((int32_t)sin16(phase16(p / 60.0f)) * 128) >> 15;
+        int16_t swing = ((int32_t)sin16(base + p * windStep) * 128) >> 15;
         uint16_t angle = (uint16_t)((uint32_t)p * 65536 / points);
         int16_t px = 128 + (((int32_t)sin16(angle) * swing) >> 15);
         int16_t py = 128 + (((int32_t)cos16(angle) * swing) >> 15);
-        CRGB color = ColorFromPalette(gCurrentPalette, (uint8_t)(p * 10));
+        CRGB color = ColorFromPalette(gCurrentPalette, (uint8_t)(p * 256 / points));
 
         for (uint16_t i = 0; i < NUM_LEDS; i++)
         {
             int16_t dx = ledX[i] - px;
             int16_t dy = ledY[i] - py;
-            uint16_t d2 = dx * dx + dy * dy;
+            uint32_t d2 = dx * dx + dy * dy;
             if (d2 < reach2)
             {
                 uint8_t level = 255 - d2 * 255 / reach2;

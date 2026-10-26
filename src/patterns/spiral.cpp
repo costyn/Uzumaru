@@ -83,20 +83,23 @@ void Parastichy(CRGB *ledBuffer)
     uint8_t runB = phase16(0.07f) >> 8;
     uint8_t drift = phase16(0.01f) >> 8;
     uint8_t flow = phase16(0.6f) >> 8;
-    // the families take turns: mostly A, then both, then mostly B
-    uint8_t swing = ease8InOutCubic(triwave8(phase16(0.035f) >> 8));
-    uint8_t mixA = 30 + scale8(swing, 225);
-    uint8_t mixB = 285 - mixA;
+    // the families take turns: A, a short overlap, then B
+    uint8_t swing = ease8InOutCubic(ease8InOutCubic(triwave8(phase16(0.035f) >> 8)));
+    uint8_t mixA = swing;
+    uint8_t mixB = 255 - swing;
 
     for (uint16_t i = 0; i < NUM_LEDS; i++)
     {
         uint8_t k = ledRank[i];
         uint8_t armA = (k * 8) % 21;  // 21 arms, numbered in order round the disc
         uint8_t armB = (k * 13) % 34; // 34 arms
-        // bands of arms rotating round the disc: 4 on family A, 6 on family B
-        uint8_t a = quadwave8(armA * 4 * 256 / 21 - runA);
-        uint8_t b = quadwave8(armB * 6 * 256 / 34 + runB);
+        // a few thin arms rotating round the disc: 3 on family A, 4 on family B,
+        // sharpened (fourth power) so each band is about one arm wide with crisp edges
+        uint8_t a = quadwave8(armA * 3 * 256 / 21 - runA);
+        uint8_t b = quadwave8(armB * 4 * 256 / 34 + runB);
         a = scale8(a, a);
+        a = scale8(a, a);
+        b = scale8(b, b);
         b = scale8(b, b);
         // light also pulses along each arm: outward on A, inward on B
         a = scale8(a, 120 + scale8(sin8((k / 21) * 40 - flow), 135));
@@ -109,65 +112,56 @@ void Parastichy(CRGB *ledBuffer)
 
 // Bloom_____________________________________
 // A sunflower grows seed by seed from the centre, in the order nature places
-// them, flowers for a while, then its seeds pop out one by one, scattered.
+// them, over a flower that is already there: each growth wipes the previous
+// palette away and plants the next one. Between wipes the seeds glint.
 // Seed colours step through the palette by the golden ratio, which makes them
-// line up along the spiral arms.
+// line up along the spiral arms. Bloom picks its own palettes, one per wipe.
+
+static const TProgmemRGBGradientPaletteRef bloomPalette(int32_t generation)
+{
+    uint32_t h = (uint32_t)generation * 0x9E3779B9u;
+    h ^= h >> 16;
+    return gGradientPalettes[h % gGradientPaletteCount];
+}
 
 void Bloom(CRGB *ledBuffer)
 {
-    const double cycle = 16000.0 * DEFAULT_ANIMATION_SPEED; // one grow-flower-shed cycle, in clock units
+    const double cycle = 16000.0 * DEFAULT_ANIMATION_SPEED; // one wipe plus the time until the next, in clock units
     double t = fmod(g_timeAccumulator, cycle);
     if (t < 0)
         t += cycle;
-    float u = t / cycle;                                                  // 0..1 through the cycle
-    uint8_t generation = (uint8_t)(int64_t)floor(g_timeAccumulator / cycle); // shifts colours every cycle
+    float u = t / cycle;                                         // 0..1 through the cycle
+    int32_t generation = (int32_t)floor(g_timeAccumulator / cycle); // which wipe this is
+    TProgmemRGBGradientPaletteRef oldRef = bloomPalette(generation);
+    TProgmemRGBGradientPaletteRef newRef = bloomPalette(generation + 1);
+    if (newRef == oldRef)
+        newRef = bloomPalette(generation + 2);
+    CRGBPalette16 oldPalette = oldRef;
+    CRGBPalette16 newPalette = newRef;
     uint8_t shimmer = phase16(0.5f) >> 8;
-    const float tail = 24; // seeds over which a new seed settles from white to its colour
+    const float tail = 24;          // seeds over which a new seed settles from white to its colour
+    const float growUntil = 0.45f;  // the wipe takes this part of the cycle
 
+    float front = u < growUntil ? u / growUntil * (NUM_LEDS + tail) : NUM_LEDS + tail;
     for (uint16_t i = 0; i < NUM_LEDS; i++)
     {
         uint8_t k = ledRank[i];
-        uint8_t index = k * 158 + generation * 37; // 158/256 = golden ratio
-        uint8_t level = 0;
-        uint8_t white = 0;
-
-        if (u < 0.45f) // growing: a front of new seeds moves outward
+        uint8_t glint = 160 + scale8(sin8(k * 97 + shimmer), 95);
+        float age = front - k;
+        CRGB color;
+        if (age > 0) // planted in this wipe
         {
-            float front = u / 0.45f * (NUM_LEDS + tail);
-            float age = front - k;
-            if (age > 0)
+            color = ColorFromPalette(newPalette, k * 158 + (generation + 1) * 37, glint); // 158/256 = golden ratio
+            if (age < tail)
             {
-                level = 255;
-                if (age < tail)
-                    white = 255 - (uint8_t)(age * 255 / tail);
+                uint8_t white = 255 - (uint8_t)(age * 255 / tail);
+                color = blend(color, CRGB(glint, glint, glint), white);
             }
         }
-        else if (u < 0.75f) // in flower: seeds glint
+        else // still the previous flower
         {
-            level = 160 + scale8(sin8(k * 97 + shimmer), 95);
+            color = ColorFromPalette(oldPalette, k * 158 + generation * 37, glint);
         }
-        else // shedding: seeds pop out one by one in a scattered order, each with a flash
-        {
-            // every seed gets its own drop time, different in each cycle
-            uint32_t h = (k + 1) * 2654435761u ^ generation * 0x9E3779B9u;
-            h ^= h >> 15;
-            h *= 0x2C1B3C6Du;
-            h ^= h >> 12;
-            float dropAt = (h >> 16) / 65536.0f * 0.9f; // all gone by 90% of the phase
-            float since = (u - 0.75f) / 0.25f - dropAt; // in phase units: 1 = 4 s
-            const float flash = 0.06f;                  // ~0.25 s from pop to dark
-            if (since < 0)
-                level = 255;
-            else if (since < flash)
-            {
-                level = 255 - (uint8_t)(since / flash * 255);
-                white = level; // starts white, fades out
-            }
-        }
-
-        CRGB color = ColorFromPalette(gCurrentPalette, index, level);
-        if (white)
-            color = blend(color, CRGB(level, level, level), white);
         ledBuffer[i] = color;
     }
 }
@@ -200,8 +194,11 @@ void SeedRunners(CRGB *ledBuffer)
     for (uint16_t i = 0; i < NUM_LEDS; i++)
     {
         uint8_t k = ledRank[i];
-        uint8_t out = comet(clockOut, k % 21, k / 21, 13, false);
-        uint8_t in = comet(clockIn, k % 34, k / 34, 8, true);
+        // runners on every other arm only (by the arms' order round the disc): less is more
+        bool outArm = ((k * 8) % 21) % 2 == 0;  // 11 of the 21 outward arms
+        bool inArm = ((k * 13) % 34) % 2 == 0;  // 17 of the 34 inward arms
+        uint8_t out = outArm ? comet(clockOut, k % 21, k / 21, 13, false) : 0;
+        uint8_t in = inArm ? comet(clockIn, k % 34, k / 34, 8, true) : 0;
         CRGB color = ColorFromPalette(gCurrentPalette, drift + (k % 21) * 12, out);
         color += ColorFromPalette(gCurrentPalette, drift + 128 + (k % 34) * 7, scale8(in, 200));
         ledBuffer[i] = color;
@@ -389,6 +386,16 @@ void Heartbeat(CRGB *ledBuffer)
     }
 }
 
+// Palette colour at a 16-bit index: interpolates between the 8-bit palette
+// positions, for gradients that move slowly across few LEDs.
+CRGB paletteColor16(const CRGBPalette16 &palette, uint16_t index, uint8_t brightness)
+{
+    uint8_t whole = index >> 8;
+    CRGB a = ColorFromPalette(palette, whole, brightness);
+    CRGB b = ColorFromPalette(palette, whole + 1, brightness);
+    return blend(a, b, index & 0xFF);
+}
+
 // ColorWheel_____________________________________
 // The palette laid round the disc and squeezed and stretched: the gradient
 // bunches up on one side and spreads out on the other, the bunching travels
@@ -397,13 +404,14 @@ void Heartbeat(CRGB *ledBuffer)
 
 void ColorWheel(CRGB *ledBuffer)
 {
-    uint16_t spin = phase16(0.05f);
-    uint16_t squeezeAt = -phase16(0.02f); // where the gradient bunches up
+    // rates tuned on the lamp: 1.6x the first version, which stepped visibly at the default speed
+    uint16_t spin = phase16(0.08f);
+    uint16_t squeezeAt = -phase16(0.0325f); // where the gradient bunches up
     // how much it bunches: 0 = even wheel .. ~0.9 = most of it on one side
-    uint8_t squeeze = scale8(cubicwave8(phase16(0.03f) >> 8), 230);
+    uint8_t squeeze = scale8(cubicwave8(phase16(0.05f) >> 8), 230);
     int32_t squeezeK = (int32_t)squeeze * 10430 >> 8; // amount * 65536 / (2 pi), Q8 -> Q16
     // swirl: up to ~0.8 turn from the centre to the rim, winding both ways
-    int32_t twist = (int32_t)sin16(phase16(0.021f)) * 200 >> 15;
+    int32_t twist = (int32_t)sin16(phase16(0.034f)) * 200 >> 15;
 
     for (uint16_t i = 0; i < NUM_LEDS; i++)
     {
@@ -411,8 +419,10 @@ void ColorWheel(CRGB *ledBuffer)
         // theta + a * sin(theta - c): monotonic for a < 1, so no folds
         int32_t warp = ((int32_t)sin16(angle - squeezeAt) * squeezeK) >> 15;
         uint16_t phase = angle + warp + ledRadius[i] * twist + spin;
-        // up the palette and back down once round the disc: no seam
-        uint8_t index = scale8(triwave8(phase >> 8), 240);
-        ledBuffer[i] = ColorFromPalette(gCurrentPalette, index, 255);
+        // up the palette and back down once round the disc: no seam. 16-bit
+        // index, so slow movement is smooth instead of stepping 2 palette
+        // positions at a time (visible as jitter at low brightness).
+        uint16_t tri = phase < 0x8000 ? phase * 2 : (0xFFFF - phase) * 2;
+        ledBuffer[i] = paletteColor16(gCurrentPalette, ((uint32_t)tri * 240) >> 8);
     }
 }

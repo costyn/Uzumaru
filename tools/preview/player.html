@@ -105,7 +105,7 @@
   <div class="controls">
     <button id="play" type="button">Pause</button>
     <label for="diffuse">Paper diffuser <input id="diffuse" type="range" min="0" max="14" value="6"></label>
-    <label for="bright">Brightness <input id="bright" type="range" min="4" max="255" value="255"></label>
+    <label for="bright">Brightness <input id="bright" type="range" min="4" max="255" value="50"></label>
   </div>
 
   <section class="new">
@@ -126,7 +126,7 @@
   </section>
 
   <footer>
-    <p>Each clip loops 16 to 30 seconds at the default speed with the Sunset palette, simulated at about 83 frames per second and shown at /*FPS*/28. Colours are converted from LED light to screen brightness, so dim LEDs look roughly as they do on the lamp.</p>
+    <p>Each clip loops 16 to 30 seconds at the default speed and brightness (50, adjustable) with the Sunset palette, simulated at about 83 frames per second and shown at /*FPS*/28. Colours are converted from LED light to screen brightness, so dim LEDs look roughly as they do on the lamp.</p>
     <p><a href="https://costyn.github.io/uzumaru/">Photos of the lamp</a> · <a href="https://github.com/costyn/Splendida2024">Source code</a> · regenerate with <code>tools/preview/publish.sh</code>.</p>
   </footer>
 </main>
@@ -138,7 +138,7 @@ const FPS = /*FPS*/28;
 const DESCRIPTIONS = {
   Uzumaki: "A two-armed spiral that turns and draws you towards the centre. How tightly it winds breathes slowly.",
   Parastichy: "Light runs round the 21 clockwise arms one way and the 34 counter-clockwise arms the other, taking turns.",
-  Bloom: "A sunflower grows seed by seed in nature's order, flowers, then sheds its seeds from the edge inwards.",
+  Bloom: "A sunflower grows seed by seed over the previous one, wiping its palette away and planting the next. Between wipes the seeds glint.",
   SeedRunners: "Comets race outward along the 21 arms and inward along the 34. The 21 arms are also how the board is wired.",
   Ripples: "Drops fall on a pond and send out rings. With a beatsense board they fall on the beat.",
   Vortex: "Sparks orbit the centre, the inner ones faster, and spiral down the drain before reappearing at the rim.",
@@ -151,7 +151,7 @@ const DESCRIPTIONS = {
   Octopus: "Five wriggling tentacles of interference bands that ride the palette outward. From Stepko and Sutaburosu's Octopus, via WLED.",
   PolarLights: "Aurora curtains: noise stretched into vertical streaks, brightest in a band across the middle. From WLED's Polar Lights.",
   SunRadiation: "A sun behind shimmering heat: noise as a bumpy surface lit from the centre, in glowing reds and oranges. From ldirko's Sun Radiation, via WLED.",
-  DriftRose: "36 points slide back and forth along their own diameters at different paces, tracing shifting rose curves. From Stepko's Drift Rose, via WLED.",
+  DriftRose: "24 points swing through the centre, their timing slowly winding into roses and spirals and back into a star.",
   pridePalette: "Mark Kriegsman's Pride motion, coloured from the current palette instead of the rainbow.",
 };
 const NEW = ["Uzumaki", "Parastichy", "Bloom", "SeedRunners", "Ripples", "Vortex", "Heartbeat", "ColorWheel"];
@@ -166,7 +166,7 @@ let lut = [];
 const setBrightness = b => {
   lut = Array.from({ length: 256 }, (_, v) => Math.round(255 * Math.pow((v * b) / 65025, 1 / 2.2)));
 };
-setBrightness(255);
+setBrightness(50); // the lamp starts at 50
 const decoded = new Map();
 let current = null, frame = 0, playing = true, last = 0;
 

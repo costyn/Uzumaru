@@ -4,7 +4,7 @@
 
 Uzumaru combines the Japanese words "uzumaki" (spiral) and "maru" (circle) into a light sculpture: 256 LEDs arranged on a
 Fibonacci spiral like the seeds of a sunflower, in a 3D-printed flower, with a single colour-lit knob to control it. It runs
-on an ESP32 and plays 39 animated patterns, eight of them written specifically for the spiral's geometry.
+on an ESP32 and plays 38 animated patterns, seven of them written specifically for the spiral's geometry.
 
 | | | | |
 |---|---|---|---|
@@ -61,11 +61,11 @@ spiral arms directly (21 winding clockwise, 34 counter-clockwise):
 | ----------- | --------------------------------------------------------------------------------------------- |
 | Uzumaki     | A two-armed spiral that turns and draws you towards the centre                                 |
 | Parastichy  | Light runs round the 21 clockwise and the 34 counter-clockwise arms in turn                    |
-| Bloom       | A sunflower grows seed by seed, flowers, then its seeds pop out one by one                     |
+| Bloom       | A sunflower grows seed by seed over the last one, wiping one palette into the next             |
 | SeedRunners | Comets race outward along one family of arms and inward along the other                        |
 | Ripples     | Drops on a pond, with rings at true distances (on the beat with beatsense)                     |
 | Vortex      | Sparks orbit and spiral down the drain                                                         |
-| Heartbeat   | A ring of light per beat; follows the music with beatsense, otherwise a resting pulse          |
+| Heartbeat   | A ring of light per beat (not in the playlist: kept for future music reactions)                |
 | ColorWheel  | The palette round the disc, squeezed and stretched as it swirls (replaces testCylinderMapping2) |
 
 **From Jason Coon's [Fibonacci256](https://www.evilgeniuslabs.org/fibonacci256)** ([`src/patterns/fibonacci256.cpp`](src/patterns/fibonacci256.cpp)),

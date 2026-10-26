@@ -36,6 +36,9 @@ uint16_t phase16(float hz);
 float forwardMs(double &last);
 // Fade a buffer to black with a half life in milliseconds (frame-rate independent).
 void fadeByTime(CRGB *ledBuffer, float ms, float halfLifeMs, float &carry);
+// Palette colour at a 16-bit index (interpolated): smooth slow gradients, no
+// stepping or dither flicker at low brightness.
+CRGB paletteColor16(const CRGBPalette16 &palette, uint16_t index, uint8_t brightness = 255);
 
 // ldirko.cpp
 void DigitalRain(CRGB *buffer);
