@@ -127,13 +127,15 @@ void SunRadiation(CRGB *ledBuffer)
 
 void DriftRose(CRGB *ledBuffer)
 {
-    // Changed for the lamp: WLED's 36 points each swing at their own rate
-    // (1..36 per minute), so after the opening swirl they scatter into many
-    // separate bits for most of each minute, too much detail for 256 LEDs.
-    // Here 24 points swing at one rate with a per-point phase offset that slowly
-    // winds and unwinds: a star burst when it is zero, a rose or spiral when
-    // wound, and never a scatter.
-    const uint8_t points = 24;
+    // Changed for the lamp: WLED's 36 points each swing along their own ray at
+    // their own rate (1..36 per minute), so after the opening swirl they
+    // scatter into many separate bits for most of each minute: too much detail
+    // for 256 LEDs. Here every point swings at one rate, offset by k times its
+    // angle, which draws the rose r = sin(k * angle + t). k drifts between 2 and
+    // 5, always a full rose (k = 2: four petals, 3: three, ...): below 2 it
+    // collapses to a circle on one side of the disc; above ~5 the petals get
+    // too many and small for the panel.
+    const uint8_t points = 36;
     const float fadeHalfLifeMs = 80;
     const uint32_t reach2 = 15 * 15;      // a point lights the LEDs within this distance
     static double lastClock = 0;
@@ -150,13 +152,13 @@ void DriftRose(CRGB *ledBuffer)
     fadeByTime(ledBuffer, dt, fadeHalfLifeMs, fadeCarry);
 
     uint16_t base = phase16(0.25f);
-    // phase offset between neighbouring points: up to 1.5 turns over all points, both ways
-    int32_t windStep = ((int32_t)sin16(phase16(0.012f)) * (65536 * 3 / 2 / points)) >> 15;
+    // petals parameter k in Q8: 2..5, drifting slowly
+    uint32_t kQ8 = 512 + (((uint32_t)(sin16(phase16(0.012f)) + 32768) * (3 * 256)) >> 16);
 
     for (uint8_t p = 0; p < points; p++)
     {
-        int16_t swing = ((int32_t)sin16(base + p * windStep) * 128) >> 15;
         uint16_t angle = (uint16_t)((uint32_t)p * 65536 / points);
+        int16_t swing = ((int32_t)sin16(base + (uint16_t)((angle * kQ8) >> 8)) * 128) >> 15;
         int16_t px = 128 + (((int32_t)sin16(angle) * swing) >> 15);
         int16_t py = 128 + (((int32_t)cos16(angle) * swing) >> 15);
         CRGB color = ColorFromPalette(gCurrentPalette, (uint8_t)(p * 256 / points));

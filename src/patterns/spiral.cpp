@@ -155,7 +155,7 @@ void Bloom(CRGB *ledBuffer)
             if (age < tail)
             {
                 uint8_t white = 255 - (uint8_t)(age * 255 / tail);
-                color = blend(color, CRGB(glint, glint, glint), white);
+                color = blend(color, CRGB::White, white); // newly planted seeds flash full white
             }
         }
         else // still the previous flower
@@ -404,14 +404,14 @@ CRGB paletteColor16(const CRGBPalette16 &palette, uint16_t index, uint8_t bright
 
 void ColorWheel(CRGB *ledBuffer)
 {
-    // rates tuned on the lamp: 1.6x the first version, which stepped visibly at the default speed
-    uint16_t spin = phase16(0.08f);
-    uint16_t squeezeAt = -phase16(0.0325f); // where the gradient bunches up
+    // rates tuned on the lamp: 2.4x the first version, which looked too slow and stepped at the default speed
+    uint16_t spin = phase16(0.12f);
+    uint16_t squeezeAt = -phase16(0.05f); // where the gradient bunches up
     // how much it bunches: 0 = even wheel .. ~0.9 = most of it on one side
-    uint8_t squeeze = scale8(cubicwave8(phase16(0.05f) >> 8), 230);
+    uint8_t squeeze = scale8(cubicwave8(phase16(0.075f) >> 8), 230);
     int32_t squeezeK = (int32_t)squeeze * 10430 >> 8; // amount * 65536 / (2 pi), Q8 -> Q16
     // swirl: up to ~0.8 turn from the centre to the rim, winding both ways
-    int32_t twist = (int32_t)sin16(phase16(0.034f)) * 200 >> 15;
+    int32_t twist = (int32_t)sin16(phase16(0.05f)) * 200 >> 15;
 
     for (uint16_t i = 0; i < NUM_LEDS; i++)
     {
