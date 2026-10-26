@@ -47,6 +47,10 @@
 #define CROSSFADE_TIME 4000 // milliseconds
 #define CROSSFADE_STEPS 255 // 255 = max (8 bit)
 
+// Playlist mode: a knob step back in the other direction within this time is
+// treated as detent wobble and ignored
+#define PLAYLIST_REVERSE_GUARD_MS 350
+
 // Now you can see how long the crossfade is still active
 #define ENCODER_ANIMATION_IDLE_TIMEOUT CROSSFADE_TIME
 

@@ -143,7 +143,6 @@ void autoNextPattern()
 void changePattern(int8_t direction)
 {
   constexpr const char *SGN = "changePattern()";
-  Serial.printf("%s: %s: Crossfading", timeToString().c_str(), SGN);
 
   bool fading = _taskBufferCrossfade.isEnabled();
   uint8_t activePattern = _renderBuffer == BUFFER1 ? gBuffer1PatternNumber : gBuffer2PatternNumber;
@@ -168,6 +167,9 @@ void changePattern(int8_t direction)
     gBuffer1PatternNumber = next;
     g_buffer1InitNeeded = 1;
   }
+  // say straight away where we're going, not only once the crossfade is done
+  Serial.printf("%s: %s: %s -> %u/%u %s (crossfading)\n", timeToString().c_str(), SGN,
+                direction > 0 ? "next" : "previous", (unsigned)next + 1, (unsigned)gPatternCount, gPatterns[next].name);
   _taskBufferCrossfade.enableIfNot();
 }
 
@@ -181,7 +183,6 @@ void bufferCrossfade()
   {
     _bufferBlendAmount = CROSSFADE_STEPS - _taskBufferCrossfade.getRunCounter();
   }
-  Serial.print(".");
 }
 
 void bufferBlendDone()
@@ -191,8 +192,7 @@ void bufferBlendDone()
   _renderBuffer = _renderBuffer == BUFFER1 ? BUFFER2 : BUFFER1;
   _taskBufferCrossfade.setIterations(CROSSFADE_STEPS); // reset iterations for next run
 
-  Serial.println("Done");
-  Serial.printf("%s: %s: Rendering to buffer %s\n", timeToString().c_str(), SGN, _renderBuffer == BUFFER1 ? "1" : "2");
+  Serial.printf("%s: %s: crossfade done, rendering to buffer %s\n", timeToString().c_str(), SGN, _renderBuffer == BUFFER1 ? "1" : "2");
   printPatternAndPalette();
 }
 

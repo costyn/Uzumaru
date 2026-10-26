@@ -87,8 +87,9 @@ speed 0.08). What worked and what didn't, October 2026:
   into many independent moving bits looks like noise (WLED's DriftRose did; ours stays one coherent figure).
 - **Vary brightness, don't shove colours around.** The favourites keep colours roughly in place, or drifting slowly,
   and move *light* through them: pulses, glints, waves of brightness over a calm palette (Uzumaki, Bloom's glint,
-  Octopus, pridePalette). Fast-moving colour fields read as busy. (The owner's words were hard to pin down here; ask
-  them if a change depends on the distinction.)
+  Octopus, pridePalette). Fast-moving colour fields read as busy. In the owner's words about pridePalette: the
+  brighter LEDs look as if they move towards you in space, as if each sat on a little actuator. That depth effect,
+  from brightness alone, is the thing to aim for.
 - **Bright enough at brightness 50.** Check with `tools/preview/brightness.py` (average LED output, 0-255): full-field
   patterns should land around 30-45; Pacifica (18) and PolarLights (20) were too dark. Sparse patterns can sit lower if
   their features are bright. In the preview, the brightness slider starts at the lamp's 50.

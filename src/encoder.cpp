@@ -113,22 +113,29 @@ static void encoder_onChange(i2cEncoderLibV2 *obj)
         {
             g_animationSpeed = max(MIN_ANIMATION_SPEED, g_animationSpeed - ANIMATION_SPEED_STEP);
         }
-        Serial.printf("%s: Animation Speed: %.2f\n", SGN, g_animationSpeed);
+        Serial.printf("%s: %s: Animation Speed: %.2f\n", timeToString().c_str(), SGN, g_animationSpeed);
         break;
 
     case PLAYLIST:
+    {
         setEncoderColor(obj, PLAYLIST);
-        if (increasing)
+        // A knob that wobbles at a detent can report next and previous in one
+        // movement: ignore a step back the other way that follows too soon.
+        // (changePattern() prints the pattern it switches to.)
+        static uint32_t lastStepMs = 0;
+        static int8_t lastDirection = 0;
+        int8_t direction = increasing ? 1 : -1;
+        uint32_t now = millis();
+        if (direction == -lastDirection && now - lastStepMs < PLAYLIST_REVERSE_GUARD_MS)
         {
-            Serial.printf("%s: Next Pattern\n", SGN);
-            changePattern(1);
+            Serial.printf("%s: %s: ignored a quick reversal\n", timeToString().c_str(), SGN);
+            break;
         }
-        else
-        {
-            Serial.printf("%s: Previous Pattern\n", SGN);
-            changePattern(-1);
-        }
+        lastStepMs = now;
+        lastDirection = direction;
+        changePattern(direction);
         break;
+    }
 
     default:
         break;
@@ -176,27 +183,26 @@ static void encoder_doubleClick(i2cEncoderLibV2 *obj)
 
 static void setEncoderState(i2cEncoderLibV2 *obj, EncoderState state)
 {
+    static const char *const names[] = {"BRIGHTNESS", "SPEED", "PLAYLIST"};
     setEncoderColor(obj, state);
     g_encoderState = state;
+    Serial.printf("%s: setEncoderState(): EncoderState: %s\n", timeToString().c_str(), names[state]);
 }
 
 static void setEncoderColor(i2cEncoderLibV2 *obj, EncoderState state)
 {
-    constexpr const char *SGN = "setEncoderColor()";
-
+    // Called on every knob step (to restore the mode colour after the idle
+    // animation), so it doesn't print; setEncoderState() reports mode changes.
     switch (state)
     {
     case BRIGHTNESS:
         obj->writeRGBCode(0xFF0000); // Red
-        Serial.printf("%s: %s: EncoderState: %s\n", timeToString().c_str(), SGN, "BRIGHTNESS");
         break;
     case SPEED:
         obj->writeRGBCode(0x00FFFF); // Cyan
-        Serial.printf("%s: %s: EncoderState: %s\n", timeToString().c_str(), SGN, "SPEED");
         break;
     case PLAYLIST:
         obj->writeRGBCode(0xFFFF00); // Yellow
-        Serial.printf("%s: %s: EncoderState: %s\n", timeToString().c_str(), SGN, "PLAYLIST");
         break;
     }
 }
