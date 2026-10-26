@@ -92,7 +92,8 @@ speed 0.08). What worked and what didn't, October 2026:
   from brightness alone, is the thing to aim for.
 - **Bright enough at brightness 50.** Check with `tools/preview/brightness.py` (average LED output, 0-255): full-field
   patterns should land around 30-45; Pacifica (18) and PolarLights (20) were too dark. Sparse patterns can sit lower if
-  their features are bright. In the preview, the brightness slider starts at the lamp's 50.
+  their features are bright. Don't judge brightness from the web preview: a screen can't match the LEDs (the owner:
+  even full brightness on the web doesn't match the lamp at 50), so its slider starts at full; use the numbers.
 - **Smooth at the default speed.** Slow gradients on few LEDs step visibly, and FastLED's dithering flickers at low
   brightness. Use 16-bit palette positions (`paletteColor16()`) for slow-moving gradients, and pick rates that look
   smooth at speed 0.08 (ColorWheel needed 1.6x its first rates).
