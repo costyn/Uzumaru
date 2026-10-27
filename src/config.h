@@ -24,7 +24,7 @@
 // --- Power & brightness ---
 #define MIN_BRIGHTNESS 1        // min brightness of leds
 #define MAX_BRIGHTNESS 250      // max brightness of leds - will be limited by max power
-#define DEFAULT_BRIGHTNESS 50   // default brightness
+#define DEFAULT_BRIGHTNESS 100  // brightness at power-on (50 was too dim on the lamp)
 
 // --- Lookup table resolutions (see tables.h) ---
 #define NUM_COLS_PLANAR 20 // resolution of planar lookup table

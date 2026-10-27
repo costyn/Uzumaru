@@ -79,8 +79,8 @@ tools/wokwi/smoke.sh                                             # Wokwi boot te
 
 ## Pattern design guidelines (the owner's taste, from watching them on the lamp)
 
-The panel has only 256 LEDs behind a diffuser, and the owner judges patterns at the power-on defaults (brightness 50,
-speed 0.08). What worked and what didn't, October 2026:
+The panel has only 256 LEDs behind a diffuser, and the owner judges patterns at the power-on defaults (brightness 100,
+raised from 50 in late October 2026; speed 0.08). What worked and what didn't, October 2026:
 
 - **Less is more.** A few strong elements beat many small ones: 3-4 thin spiral arms rather than 10 overlapping bands
   (Parastichy), runners on half the arms (SeedRunners). Fine detail is lost at this resolution: a pattern that breaks
@@ -90,10 +90,12 @@ speed 0.08). What worked and what didn't, October 2026:
   Octopus, pridePalette). Fast-moving colour fields read as busy. In the owner's words about pridePalette: the
   brighter LEDs look as if they move towards you in space, as if each sat on a little actuator. That depth effect,
   from brightness alone, is the thing to aim for.
-- **Bright enough at brightness 50.** Check with `tools/preview/brightness.py` (average LED output, 0-255): full-field
-  patterns should land around 30-45; Pacifica (18) and PolarLights (20) were too dark. Sparse patterns can sit lower if
+- **Bright enough at the default brightness.** Check with `tools/preview/brightness.py` (average LED output, 0-255): full-field
+  patterns should land around 30-45; Pacifica (18) and PolarLights (20) were too dark at brightness 50. Sparse patterns can sit lower if
   their features are bright. Don't judge brightness from the web preview: a screen can't match the LEDs (the owner:
   even full brightness on the web doesn't match the lamp at 50), so its slider starts at full; use the numbers.
+- **Palettes with dark stretches** (about half the set: Vintage, Semi Blue, Yelblu Hot...) suit patterns where dark is
+  the background. A pattern that spreads a whole palette over the disc (Bloom) should skip them.
 - **Smooth at the default speed.** Slow gradients on few LEDs step visibly, and FastLED's dithering flickers at low
   brightness. Use 16-bit palette positions (`paletteColor16()`) for slow-moving gradients, and pick rates that look
   smooth at speed 0.08 (ColorWheel needed 1.6x its first rates).

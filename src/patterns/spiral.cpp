@@ -117,11 +117,34 @@ void Parastichy(CRGB *ledBuffer)
 // Seed colours step through the palette by the golden ratio, which makes them
 // line up along the spiral arms. Bloom picks its own palettes, one per wipe.
 
-static const TProgmemRGBGradientPaletteRef bloomPalette(int32_t generation)
+// Bloom spreads a whole palette over the flower, so palettes with long dark
+// stretches (meant as backgrounds in other patterns) would leave large dark
+// areas: use only palettes that are less than 10% dark.
+static bool bloomPaletteUsable(uint8_t index)
+{
+    static uint8_t checked[(256 + 7) / 8], usable[(256 + 7) / 8];
+    if (!(checked[index >> 3] & (1 << (index & 7))))
+    {
+        CRGBPalette16 palette = gGradientPalettes[index];
+        uint8_t dark = 0;
+        for (uint16_t i = 0; i < 256; i += 4)
+            if (ColorFromPalette(palette, i).getAverageLight() < 24)
+                dark++;
+        checked[index >> 3] |= 1 << (index & 7);
+        if (dark * 10 < 64)
+            usable[index >> 3] |= 1 << (index & 7);
+    }
+    return usable[index >> 3] & (1 << (index & 7));
+}
+
+static uint8_t bloomPalette(int32_t generation)
 {
     uint32_t h = (uint32_t)generation * 0x9E3779B9u;
     h ^= h >> 16;
-    return gGradientPalettes[h % gGradientPaletteCount];
+    uint8_t index = h % gGradientPaletteCount;
+    for (uint8_t tries = 0; tries < gGradientPaletteCount && !bloomPaletteUsable(index); tries++)
+        index = (index + 1) % gGradientPaletteCount;
+    return index;
 }
 
 void Bloom(CRGB *ledBuffer)
@@ -132,12 +155,19 @@ void Bloom(CRGB *ledBuffer)
         t += cycle;
     float u = t / cycle;                                         // 0..1 through the cycle
     int32_t generation = (int32_t)floor(g_timeAccumulator / cycle); // which wipe this is
-    TProgmemRGBGradientPaletteRef oldRef = bloomPalette(generation);
-    TProgmemRGBGradientPaletteRef newRef = bloomPalette(generation + 1);
-    if (newRef == oldRef)
-        newRef = bloomPalette(generation + 2);
-    CRGBPalette16 oldPalette = oldRef;
-    CRGBPalette16 newPalette = newRef;
+    uint8_t oldIndex = bloomPalette(generation);
+    uint8_t newIndex = bloomPalette(generation + 1);
+    if (newIndex == oldIndex)
+        newIndex = bloomPalette(generation + 2);
+    CRGBPalette16 oldPalette = gGradientPalettes[oldIndex];
+    CRGBPalette16 newPalette = gGradientPalettes[newIndex];
+    // Bloom ignores the lamp's palette rotation, so say which palette it is planting
+    static int32_t announced = INT32_MIN;
+    if (generation != announced)
+    {
+        announced = generation;
+        Serial.printf("%s: Bloom(): planting palette %s\n", timeToString().c_str(), paletteNames[newIndex]);
+    }
     uint8_t shimmer = phase16(0.5f) >> 8;
     const float tail = 24;          // seeds over which a new seed settles from white to its colour
     const float growUntil = 0.45f;  // the wipe takes this part of the cycle
@@ -146,7 +176,10 @@ void Bloom(CRGB *ledBuffer)
     for (uint16_t i = 0; i < NUM_LEDS; i++)
     {
         uint8_t k = ledRank[i];
-        uint8_t glint = 160 + scale8(sin8(k * 97 + shimmer), 95);
+        // each seed swells and fades on its own: squared so the bright moments
+        // are short and the seeds seem to come towards you (60..255)
+        uint8_t swell = sin8(k * 97 + shimmer);
+        uint8_t glint = 60 + scale8(scale8(swell, swell), 195);
         float age = front - k;
         CRGB color;
         if (age > 0) // planted in this wipe
