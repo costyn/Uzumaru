@@ -109,6 +109,12 @@ The owner prefers current versions. `platformio.ini` tracks the latest releases;
 actually breaks the build or behaviour, with a comment saying why and what would unpin it. CI runs weekly to catch
 upstream breakage.
 
+**The Atom S3 build is pinned** (espressif32 6.10.0 = Arduino-ESP32 2.0.17, FastLED 3.9.15, TaskScheduler 3.8.5): on
+Arduino-ESP32 3.3 / FastLED 3.10 the S3 sends the LEDs a garbage signal (all full red; the current draw drops USB),
+confirmed on the owner's hardware in November 2026; the pinned toolchain works. The Atom Lite build tracks latest and
+works. Before unpinning, have the owner flash `m5stack_atomlite_s3_spi` (latest, FastLED's SPI LED driver) or a newer
+FastLED on the lamp: the desktop renderer and CI cannot see LED signal timing.
+
 ## Attribution and licenses
 
 GPL-3.0 firmware (inherited from ldirko's). Keep the original author headers in `ldirko.cpp`, `tables.h` and the palette
