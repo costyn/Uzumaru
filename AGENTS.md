@@ -109,11 +109,12 @@ The owner prefers current versions. `platformio.ini` tracks the latest releases;
 actually breaks the build or behaviour, with a comment saying why and what would unpin it. CI runs weekly to catch
 upstream breakage.
 
-**The Atom S3 build is pinned** (espressif32 6.10.0 = Arduino-ESP32 2.0.17, FastLED 3.9.15, TaskScheduler 3.8.5): on
-Arduino-ESP32 3.3 / FastLED 3.10 the S3 sends the LEDs a garbage signal (all full red; the current draw drops USB),
-confirmed on the owner's hardware in November 2026; the pinned toolchain works. The Atom Lite build tracks latest and
-works. Before unpinning, have the owner flash `m5stack_atomlite_s3_spi` (latest, FastLED's SPI LED driver) or a newer
-FastLED on the lamp: the desktop renderer and CI cannot see LED signal timing.
+**FastLED is pinned to 3.9.15 for the Atom S3** (November 2026): with FastLED 3.10.x (checked up to 3.10.8) the S3
+sends the LEDs a garbage signal (all full red; the current draw drops USB), with FastLED's RMT and SPI drivers alike
+and on Arduino-ESP32 2.0.17 and 3.3 alike; 3.9.15 works on the latest core. Bisected on the owner's hardware. The
+Atom Lite is fine with 3.10. Before unpinning, have the owner flash a newer FastLED on an S3 lamp: the desktop
+renderer and CI cannot see LED signal timing. Plan B if FastLED stays broken: hpwit's I2SClocklessLedDriver (S3 via
+the LCD peripheral; the owner uses it in Lumifera) for the output only.
 
 ## Attribution and licenses
 
