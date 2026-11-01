@@ -3,6 +3,7 @@
 #define GLOBALS_H
 
 #include <Arduino.h>
+#include <string>
 #include <FastLED.h>
 #include <TaskSchedulerDeclarations.h> // the full <TaskScheduler.h> is included once, in main.cpp
 
