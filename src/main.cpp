@@ -35,6 +35,7 @@ void bufferBlendDone();
 void printPatternAndPalette();
 void initializeSerial();
 void initializeLEDs();
+const char *resetReasonName();
 
 uint8_t g_targetBrightness = DEFAULT_BRIGHTNESS;
 uint8_t g_currentBrightness = 0;
@@ -73,10 +74,16 @@ Task _taskEncoderAnimation(25 * TASK_MILLISECOND, TASK_FOREVER, &updateEncoderId
 
 void setup()
 {
-  delay(500); // power-up delay; let the encoder start up and other stuff settle
-  initializeSerial();
+  // Blank the LEDs first: noise on the data line at power-up can latch
+  // random colours into all 256 LEDs, drawing amps before we take control.
   initializeLEDs();
+  FastLED.show();
+  initializeSerial();
+  delay(500); // power-up delay; let the encoder start up and other stuff settle
+  Serial.printf("%s: setup(): %s, LEDs on GPIO %d, reset reason: %s\n", timeToString().c_str(),
+                BOARD_NAME, DATA_PIN, resetReasonName());
   encoderSetup();
+  Serial.printf("%s: setup(): encoder ready\n", timeToString().c_str());
 
   _runner.init();
   _runner.addTask(_taskChangeToBrightness);
@@ -104,6 +111,26 @@ void setup()
   random16_set_seed(random());
   // Pick a random palette on start
   changePalette();
+  Serial.printf("%s: setup(): done, running\n", timeToString().c_str());
+}
+
+// Why the chip last started: a BROWNOUT means the supply sagged (too much LED
+// current for the power source), PANIC a crash.
+const char *resetReasonName()
+{
+  switch (esp_reset_reason())
+  {
+  case ESP_RST_POWERON: return "POWERON";
+  case ESP_RST_SW: return "SOFTWARE";
+  case ESP_RST_PANIC: return "PANIC (crash)";
+  case ESP_RST_INT_WDT:
+  case ESP_RST_TASK_WDT:
+  case ESP_RST_WDT: return "WATCHDOG";
+  case ESP_RST_BROWNOUT: return "BROWNOUT (supply voltage dropped)";
+  case ESP_RST_DEEPSLEEP: return "DEEPSLEEP";
+  case ESP_RST_EXT: return "EXTERNAL";
+  default: return "OTHER";
+  }
 }
 
 void loop()
@@ -206,6 +233,13 @@ void printPatternAndPalette()
 void initializeSerial()
 {
   Serial.begin(115200);
+#if ARDUINO_USB_CDC_ON_BOOT
+  // USB serial: give a computer up to 2 s to connect, so the boot messages
+  // aren't lost. Without one (lamp on a charger) this just times out.
+  uint32_t start = millis();
+  while (!Serial && millis() - start < 2000)
+    delay(10);
+#endif
 }
 
 void initializeLEDs()
