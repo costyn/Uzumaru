@@ -3,18 +3,23 @@
 Uzumaru is a round LED lamp: 256 WS2812B LEDs on a Fibonacci (Vogel/sunflower) spiral PCB (the Splendida 256), an M5Stack
 Atom S3 Lite (ESP32-S3; older lamps: Atom Lite, ESP32-PICO-D4), and one DuPPa I2C RGB rotary encoder as the only control.
 PlatformIO, Arduino framework, FastLED, TaskScheduler. Photos, the manual and the live pattern preview are on the owner's
-GitHub Pages site, https://costyn.github.io/uzumaru/ (repo costyn/costyn.github.io, folder `uzumaru/`). Read `README.md` for the user-facing picture and `docs/ARCHITECTURE_REVIEW.md` for how the
-runtime works and what is still open.
+GitHub Pages site, https://costyn.github.io/uzumaru/ (repo costyn/costyn.github.io, folder `uzumaru/`). Read `README.md`
+for the user-facing picture and `docs/ARCHITECTURE_REVIEW.md` for how the runtime works, **where things stand and what is
+still open** (its "Status and open items" section is the handover note: keep it current when you change something).
 
-## The owner usually cannot test on hardware
+## Hardware testing
 
-Assume nobody can flash or watch the lamp during a session. So:
+Only the owner can flash and watch the lamp, and often isn't at it (cloud sessions never are; a local session on the
+owner's Mac can flash over USB when a lamp is connected: ask first). So:
 
 - Never say something "works" or was "tested" unless it ran. Say what was checked: compiled for the ESP32, rendered on
   the desktop, ran under sanitizers, simulated in Wokwi. Hardware-only behaviour (LED timing, the encoder, I2C, power)
   stays "untested on hardware" until the owner confirms it.
 - Prefer changes you can verify with the tools below. Keep risky runtime changes small, separate, and listed in the
-  commit message or PR so the owner knows what to try first when they're back at the lamp.
+  commit message so the owner knows what to try first at the lamp.
+- When something only fails on the lamp, give the owner small A/B builds (extra PlatformIO environments) rather than
+  guesses: that is how the S3 FastLED problem was found. Boot logs (`pio device monitor`) show the reset reason and the
+  setup stages.
 
 ## Build and verify
 
@@ -101,7 +106,9 @@ raised from 50 in late October 2026; speed 0.08). What worked and what didn't, O
   smooth at speed 0.08 (ColorWheel needed 1.6x its first rates).
 - **Loops stay calm.** Strobing, high-contrast pulses (Heartbeat) are too intense for the playlist; keep them for
   one-shot music reactions.
-- Shown as liked without changes: Uzumaki, Ripples, Vortex, Emitter, SwirlFibonacci, PolarNoise, Octopus, pridePalette.
+- Liked on the lamp: Uzumaki, Ripples, Vortex, Emitter, SwirlFibonacci, PolarNoise, Octopus, pridePalette, and after
+  tuning ColorWheel and DriftRose. Bloom was tuned several times (palette wipe, white planting flash, deeper glint,
+  bright palettes only); the last round is not confirmed yet.
 
 ## Dependencies
 
@@ -132,5 +139,6 @@ in this repo.
 
 - Use subagents for self-contained work (broad searches, dependency upgrades, research, tool setup), with a cheaper model
   where the task allows, to save tokens. Give them exact paths and tell them which files they may touch.
-- Develop on the session's feature branch; don't push to `main` and don't open PRs unless asked.
+- Work on a feature branch; don't push to `main` and don't open PRs unless the owner asks (the owner usually says
+  "merge to main" once happy; a fast-forward is fine). The same goes for costyn.github.io, the live site.
 - Commit messages: a short imperative subject, then what changed and why, and what was verified (and how).

@@ -16,7 +16,10 @@ tools/preview/publish.sh ../costyn.github.io                       # refresh cos
 ```
 
 Environment variables: `PALETTE` (palette index, default 7 = Sunset), `SPEED` (default 0.08), `PREVIEW_SECONDS` (clip
-length, default 10).
+length: default 20 s, longer for slow patterns, see `CLIP_SECONDS` in `make_preview.py`).
+
+`python3 tools/preview/brightness.py [pattern ...]` prints each pattern's average LED output (0-255), the number the
+pattern guidelines in `AGENTS.md` use for "bright enough".
 
 The renderer itself writes raw frames (256 x RGB per frame) to stdout:
 
