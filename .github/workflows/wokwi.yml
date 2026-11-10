@@ -20,13 +20,13 @@ jobs:
     env:
       WOKWI_CLI_TOKEN: ${{ secrets.WOKWI_CLI_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/checkout@v5
+      - uses: actions/cache@v5
         with:
           path: ~/.platformio/packages # toolchains only; libraries are re-resolved below
           key: pio-packages-${{ runner.os }}-${{ github.run_id }}
           restore-keys: pio-packages-${{ runner.os }}-
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: pip install platformio
@@ -70,7 +70,7 @@ jobs:
           timeout: 5000
           args: --screenshot-part neopixels --screenshot-time 3000 --screenshot-file .pio/wokwi/screenshot.png
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: wokwi
