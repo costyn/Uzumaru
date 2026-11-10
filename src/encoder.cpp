@@ -134,6 +134,9 @@ static void encoder_onChange(i2cEncoderLibV2 *obj)
         lastStepMs = now;
         lastDirection = direction;
         changePattern(direction);
+        // Give the chosen pattern a full SECONDS_PER_PATTERN. delay() rather than
+        // restartDelayed(), which would re-enable a paused auto-change.
+        _taskChangePattern.delay();
         break;
     }
 

@@ -9,8 +9,8 @@ still open** (its "Status and open items" section is the handover note: keep it 
 
 ## Hardware testing
 
-Only the owner can flash and watch the lamp, and often isn't at it (cloud sessions never are; a local session on the
-owner's Mac can flash over USB when a lamp is connected: ask first). So:
+Only the owner can flash and watch the lamp, but local session on the owner's Mac may flash over USB when a lamp is connected: but ask first. 
+So:
 
 - Never say something "works" or was "tested" unless it ran. Say what was checked: compiled for the ESP32, rendered on
   the desktop, ran under sanitizers, simulated in Wokwi. Hardware-only behaviour (LED timing, the encoder, I2C, power)
@@ -91,10 +91,10 @@ raised from 50 in late October 2026; speed 0.08). What worked and what didn't, O
   (Parastichy), runners on half the arms (SeedRunners). Fine detail is lost at this resolution: a pattern that breaks
   into many independent moving bits looks like noise (WLED's DriftRose did; ours stays one coherent figure).
 - **Vary brightness, don't shove colours around.** The favourites keep colours roughly in place, or drifting slowly,
-  and move *light* through them: pulses, glints, waves of brightness over a calm palette (Uzumaki, Bloom's glint,
-  Octopus, pridePalette). Fast-moving colour fields read as busy. In the owner's words about pridePalette: the
+  and move *light* through them: pulses, glints, waves of brightness or shadows over a calm palette (Uzumaki, Bloom's glint,
+  Octopus, pridePalette). Fast-moving colour fields read as (too) busy. In the owner's words about pridePalette: the
   brighter LEDs look as if they move towards you in space, as if each sat on a little actuator. That depth effect,
-  from brightness alone, is the thing to aim for.
+  from brightness alone, is the thing to aim for. Various other patterns do this well too, like hypnoticWaves and Bloom. 
 - **Bright enough at the default brightness.** Check with `tools/preview/brightness.py` (average LED output, 0-255): full-field
   patterns should land around 30-45; Pacifica (18) and PolarLights (20) were too dark at brightness 50. Sparse patterns can sit lower if
   their features are bright. Don't judge brightness from the web preview: a screen can't match the LEDs (the owner:
